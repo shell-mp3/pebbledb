@@ -1,0 +1,20 @@
+-- query
+SELECT 7 / 2 AS half, 7 % 2 AS remainder FROM products LIMIT 1
+
+-- plan (unoptimized)
+Limit(1)
+└─ Project(7 / 2 AS half, 7 % 2 AS remainder)
+   └─ Scan(products) reads 4 of 4 columns [sku, title, category, unit_price], 8 rows
+
+-- plan (optimized)
+Limit(1)
+└─ Project(7 / 2 AS half, 7 % 2 AS remainder)
+   └─ Scan(products) reads 0 of 4 columns [], 8 rows
+
+rules applied: projection pruning
+
+-- result
+half | remainder
+-----+----------
+ 3.5 |         1
+(1 row)

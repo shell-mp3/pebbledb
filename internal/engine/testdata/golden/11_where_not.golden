@@ -1,0 +1,25 @@
+-- query
+SELECT sku FROM products WHERE NOT category = 'homeware'
+
+-- plan (unoptimized)
+Project(sku)
+└─ Filter(NOT category = 'homeware')
+   └─ Scan(products) reads 4 of 4 columns [sku, title, category, unit_price], 8 rows
+
+-- plan (optimized)
+Project(sku)
+└─ Filter(NOT category = 'homeware')
+   └─ Scan(products) reads 2 of 4 columns [sku, category], 8 rows
+
+rules applied: projection pruning
+
+-- result
+sku
+-----
+B-310
+B-415
+C-500
+C-610
+D-700
+D-880
+(6 rows)

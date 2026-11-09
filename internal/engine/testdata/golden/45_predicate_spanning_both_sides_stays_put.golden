@@ -1,0 +1,33 @@
+-- query
+SELECT c.id, o.id, o.qty FROM customers c JOIN orders o ON c.id = o.customer_id
+WHERE c.id < o.qty ORDER BY c.id, o.id LIMIT 5
+
+-- plan (unoptimized)
+Limit(5)
+└─ Project(c.id, o.id, o.qty)
+   └─ Sort(c.id, o.id)
+      └─ Filter(c.id < o.qty)
+         └─ HashJoin(inner, on c.id = o.customer_id)
+            ├─ probe: Scan(customers AS c) reads 5 of 5 columns [id, name, country, plan, signup_date], 12 rows
+            └─ build: Scan(orders AS o) reads 6 of 6 columns [id, customer_id, sku, qty, amount, order_date], 30 rows
+
+-- plan (optimized)
+Limit(5)
+└─ Project(c.id, o.id, o.qty)
+   └─ Sort(c.id, o.id)
+      └─ Filter(c.id < o.qty)
+         └─ HashJoin(inner, on c.id = o.customer_id)
+            ├─ probe: Scan(customers AS c) reads 1 of 5 columns [id], 12 rows
+            └─ build: Scan(orders AS o) reads 3 of 6 columns [id, customer_id, qty], 30 rows
+
+rules applied: projection pruning
+
+-- result
+id | id | qty
+---+----+----
+ 1 |  1 |   2
+ 1 | 22 |   2
+ 2 |  3 |   3
+ 2 | 23 |   5
+ 3 |  5 |   4
+(5 rows)

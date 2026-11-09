@@ -1,0 +1,5 @@
+-- query
+SELECT colour FROM products
+
+-- error
+no such column: colour

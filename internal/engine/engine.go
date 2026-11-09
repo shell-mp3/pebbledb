@@ -177,7 +177,7 @@ func (e *Engine) run(root physical.Operator) (*Result, error) {
 		// Rows are borrowed from the operator, so they must be copied before
 		// the next call overwrites them.
 		res.Rows = append(res.Rows, row.Clone())
-		if e.MaxRows > 0 && len(res.Rows) >= e.MaxRows {
+		if e.MaxRows > 0 && len(res.Rows) > e.MaxRows {
 			root.Close()
 			return nil, fmt.Errorf("query returned more than %d rows; add a LIMIT", e.MaxRows)
 		}

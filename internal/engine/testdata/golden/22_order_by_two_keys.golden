@@ -1,0 +1,27 @@
+-- query
+SELECT category, sku FROM products ORDER BY category, sku DESC
+
+-- plan (unoptimized)
+Project(category, sku)
+└─ Sort(category, sku DESC)
+   └─ Scan(products) reads 4 of 4 columns [sku, title, category, unit_price], 8 rows
+
+-- plan (optimized)
+Project(category, sku)
+└─ Sort(category, sku DESC)
+   └─ Scan(products) reads 2 of 4 columns [sku, category], 8 rows
+
+rules applied: projection pruning
+
+-- result
+category   | sku
+-----------+------
+bath       | C-610
+bath       | C-500
+homeware   | A-220
+homeware   | A-100
+lighting   | D-880
+lighting   | D-700
+stationery | B-415
+stationery | B-310
+(8 rows)

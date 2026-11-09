@@ -1,0 +1,22 @@
+-- query
+SELECT COUNT(*) AS known_country FROM customers WHERE country IS NOT NULL
+
+-- plan (unoptimized)
+Project("COUNT(*)" AS known_country)
+└─ HashAggregate(no group by, COUNT(*))
+   └─ Filter(country IS NOT NULL)
+      └─ Scan(customers) reads 5 of 5 columns [id, name, country, plan, signup_date], 12 rows
+
+-- plan (optimized)
+Project("COUNT(*)" AS known_country)
+└─ HashAggregate(no group by, COUNT(*))
+   └─ Filter(country IS NOT NULL)
+      └─ Scan(customers) reads 1 of 5 columns [country], 12 rows
+
+rules applied: projection pruning
+
+-- result
+known_country
+-------------
+           11
+(1 row)

@@ -1,0 +1,23 @@
+-- query
+SELECT sku FROM products WHERE sku NOT IN ('A-100', 'A-220', 'B-310', 'B-415')
+
+-- plan (unoptimized)
+Project(sku)
+└─ Filter(sku NOT IN ('A-100', 'A-220', 'B-310', 'B-415'))
+   └─ Scan(products) reads 4 of 4 columns [sku, title, category, unit_price], 8 rows
+
+-- plan (optimized)
+Project(sku)
+└─ Filter(sku NOT IN ('A-100', 'A-220', 'B-310', 'B-415'))
+   └─ Scan(products) reads 1 of 4 columns [sku], 8 rows
+
+rules applied: projection pruning
+
+-- result
+sku
+-----
+C-500
+C-610
+D-700
+D-880
+(4 rows)

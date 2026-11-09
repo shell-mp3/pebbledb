@@ -1,0 +1,21 @@
+-- query
+SELECT sku, unit_price FROM products WHERE unit_price > 20
+
+-- plan (unoptimized)
+Project(sku, unit_price)
+└─ Filter(unit_price > 20)
+   └─ Scan(products) reads 4 of 4 columns [sku, title, category, unit_price], 8 rows
+
+-- plan (optimized)
+Project(sku, unit_price)
+└─ Filter(unit_price > 20)
+   └─ Scan(products) reads 2 of 4 columns [sku, unit_price], 8 rows
+
+rules applied: projection pruning
+
+-- result
+sku   | unit_price
+------+-----------
+A-220 |         22
+D-700 |         64
+(2 rows)

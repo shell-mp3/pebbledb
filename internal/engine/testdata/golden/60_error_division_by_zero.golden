@@ -1,0 +1,5 @@
+-- query
+SELECT qty / 0 FROM orders
+
+-- error
+division by zero

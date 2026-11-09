@@ -1,0 +1,25 @@
+-- query
+SELECT c.name, o.amount FROM customers c LEFT JOIN orders o ON c.id = o.customer_id
+WHERE o.amount > 150
+
+-- plan (unoptimized)
+Project(c.name, o.amount)
+└─ Filter(o.amount > 150)
+   └─ HashJoin(left, on c.id = o.customer_id)
+      ├─ probe: Scan(customers AS c) reads 5 of 5 columns [id, name, country, plan, signup_date], 12 rows
+      └─ build: Scan(orders AS o) reads 6 of 6 columns [id, customer_id, sku, qty, amount, order_date], 30 rows
+
+-- plan (optimized)
+Project(c.name, o.amount)
+└─ Filter(o.amount > 150)
+   └─ HashJoin(left, on c.id = o.customer_id)
+      ├─ probe: Scan(customers AS c) reads 2 of 5 columns [id, name], 12 rows
+      └─ build: Scan(orders AS o) reads 2 of 6 columns [customer_id, amount], 30 rows
+
+rules applied: projection pruning
+
+-- result
+name      | amount
+----------+-------
+Lena Berg |    192
+(1 row)

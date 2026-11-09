@@ -1,0 +1,5 @@
+-- query
+SELECT * FROM suppliers
+
+-- error
+no such table: suppliers (loaded: customers, orders, products)

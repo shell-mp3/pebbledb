@@ -1,0 +1,24 @@
+-- query
+SELECT title FROM products ORDER BY unit_price DESC LIMIT 3
+
+-- plan (unoptimized)
+Limit(3)
+└─ Project(title)
+   └─ Sort(unit_price DESC)
+      └─ Scan(products) reads 4 of 4 columns [sku, title, category, unit_price], 8 rows
+
+-- plan (optimized)
+Limit(3)
+└─ Project(title)
+   └─ Sort(unit_price DESC)
+      └─ Scan(products) reads 2 of 4 columns [title, unit_price], 8 rows
+
+rules applied: projection pruning
+
+-- result
+title
+-----------------
+Quartz Desk Lamp
+Slate Coaster Set
+Clay Face Mask
+(3 rows)

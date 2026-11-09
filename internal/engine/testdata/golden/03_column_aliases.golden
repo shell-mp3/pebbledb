@@ -1,0 +1,25 @@
+-- query
+SELECT title AS product, unit_price AS price FROM products
+
+-- plan (unoptimized)
+Project(title AS product, unit_price AS price)
+└─ Scan(products) reads 4 of 4 columns [sku, title, category, unit_price], 8 rows
+
+-- plan (optimized)
+Project(title AS product, unit_price AS price)
+└─ Scan(products) reads 2 of 4 columns [title, unit_price], 8 rows
+
+rules applied: projection pruning
+
+-- result
+product           | price
+------------------+------
+Basalt Mug        |  14.5
+Slate Coaster Set |    22
+Granite Notebook  |  9.75
+Chalk Pencil Pack |  4.25
+Pumice Soap       |     7
+Clay Face Mask    |  18.5
+Quartz Desk Lamp  |    64
+Flint Candle      | 11.25
+(8 rows)

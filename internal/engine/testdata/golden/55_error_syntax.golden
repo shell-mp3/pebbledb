@@ -1,0 +1,5 @@
+-- query
+SELECT * FROM
+
+-- error
+line 1:14: expected a table name, found end of input

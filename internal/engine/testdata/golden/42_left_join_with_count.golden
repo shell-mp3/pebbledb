@@ -1,0 +1,33 @@
+-- query
+SELECT c.name, COUNT(o.id) AS orders FROM customers c LEFT JOIN orders o ON c.id = o.customer_id
+GROUP BY c.name ORDER BY orders DESC, c.name LIMIT 5
+
+-- plan (unoptimized)
+Limit(5)
+└─ Project(c.name, "COUNT(o.id)" AS orders)
+   └─ Sort("COUNT(o.id)" DESC, c.name)
+      └─ HashAggregate(group by c.name, COUNT(o.id))
+         └─ HashJoin(left, on c.id = o.customer_id)
+            ├─ probe: Scan(customers AS c) reads 5 of 5 columns [id, name, country, plan, signup_date], 12 rows
+            └─ build: Scan(orders AS o) reads 6 of 6 columns [id, customer_id, sku, qty, amount, order_date], 30 rows
+
+-- plan (optimized)
+Limit(5)
+└─ Project(c.name, "COUNT(o.id)" AS orders)
+   └─ Sort("COUNT(o.id)" DESC, c.name)
+      └─ HashAggregate(group by c.name, COUNT(o.id))
+         └─ HashJoin(left, on c.id = o.customer_id)
+            ├─ probe: Scan(customers AS c) reads 2 of 5 columns [id, name], 12 rows
+            └─ build: Scan(orders AS o) reads 2 of 6 columns [id, customer_id], 30 rows
+
+rules applied: projection pruning
+
+-- result
+name          | orders
+--------------+-------
+Chen Wei      |      4
+Farida Nasser |      4
+Ada Okafor    |      3
+Dalia Haddad  |      3
+Hana Kimura   |      3
+(5 rows)

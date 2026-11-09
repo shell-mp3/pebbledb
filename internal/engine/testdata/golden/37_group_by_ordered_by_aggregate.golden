@@ -1,0 +1,28 @@
+-- query
+SELECT sku, SUM(qty) AS units FROM orders GROUP BY sku ORDER BY units DESC, sku LIMIT 5
+
+-- plan (unoptimized)
+Limit(5)
+└─ Project(orders.sku, "SUM(qty)" AS units)
+   └─ Sort("SUM(qty)" DESC, orders.sku)
+      └─ HashAggregate(group by sku, SUM(qty))
+         └─ Scan(orders) reads 6 of 6 columns [id, customer_id, sku, qty, amount, order_date], 30 rows
+
+-- plan (optimized)
+Limit(5)
+└─ Project(orders.sku, "SUM(qty)" AS units)
+   └─ Sort("SUM(qty)" DESC, orders.sku)
+      └─ HashAggregate(group by sku, SUM(qty))
+         └─ Scan(orders) reads 2 of 6 columns [sku, qty], 30 rows
+
+rules applied: projection pruning
+
+-- result
+sku   | units
+------+------
+A-100 |    12
+B-415 |    12
+C-500 |    10
+D-700 |     8
+D-880 |     7
+(5 rows)

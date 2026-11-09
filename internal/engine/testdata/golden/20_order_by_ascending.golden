@@ -1,0 +1,27 @@
+-- query
+SELECT sku, unit_price FROM products ORDER BY unit_price
+
+-- plan (unoptimized)
+Project(sku, unit_price)
+└─ Sort(unit_price)
+   └─ Scan(products) reads 4 of 4 columns [sku, title, category, unit_price], 8 rows
+
+-- plan (optimized)
+Project(sku, unit_price)
+└─ Sort(unit_price)
+   └─ Scan(products) reads 2 of 4 columns [sku, unit_price], 8 rows
+
+rules applied: projection pruning
+
+-- result
+sku   | unit_price
+------+-----------
+B-415 |       4.25
+C-500 |          7
+B-310 |       9.75
+D-880 |      11.25
+A-100 |       14.5
+C-610 |       18.5
+A-220 |         22
+D-700 |         64
+(8 rows)

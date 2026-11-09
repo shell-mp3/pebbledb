@@ -1,0 +1,24 @@
+-- query
+SELECT id, amount FROM orders ORDER BY amount LIMIT 3
+
+-- plan (unoptimized)
+Limit(3)
+└─ Project(id, amount)
+   └─ Sort(amount)
+      └─ Scan(orders) reads 6 of 6 columns [id, customer_id, sku, qty, amount, order_date], 30 rows
+
+-- plan (optimized)
+Limit(3)
+└─ Project(id, amount)
+   └─ Sort(amount)
+      └─ Scan(orders) reads 2 of 6 columns [id, amount], 30 rows
+
+rules applied: projection pruning
+
+-- result
+id | amount
+---+-------
+29 |   NULL
+19 |      7
+16 |    8.5
+(3 rows)

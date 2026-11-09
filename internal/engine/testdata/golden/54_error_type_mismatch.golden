@@ -1,0 +1,5 @@
+-- query
+SELECT sku FROM products WHERE title > 1
+
+-- error
+title > 1: cannot apply comparison to string and int

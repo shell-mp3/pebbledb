@@ -1,0 +1,25 @@
+-- query
+SELECT sku, title FROM products
+
+-- plan (unoptimized)
+Project(sku, title)
+└─ Scan(products) reads 4 of 4 columns [sku, title, category, unit_price], 8 rows
+
+-- plan (optimized)
+Project(sku, title)
+└─ Scan(products) reads 2 of 4 columns [sku, title], 8 rows
+
+rules applied: projection pruning
+
+-- result
+sku   | title
+------+------------------
+A-100 | Basalt Mug
+A-220 | Slate Coaster Set
+B-310 | Granite Notebook
+B-415 | Chalk Pencil Pack
+C-500 | Pumice Soap
+C-610 | Clay Face Mask
+D-700 | Quartz Desk Lamp
+D-880 | Flint Candle
+(8 rows)

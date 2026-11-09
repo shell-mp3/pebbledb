@@ -1,0 +1,33 @@
+-- query
+SELECT o.sku, SUM(o.qty * p.unit_price) AS gross
+FROM orders o JOIN products p ON o.sku = p.sku
+GROUP BY o.sku ORDER BY gross DESC LIMIT 4
+
+-- plan (unoptimized)
+Limit(4)
+└─ Project(o.sku, "SUM(o.qty * p.unit_price)" AS gross)
+   └─ Sort("SUM(o.qty * p.unit_price)" DESC)
+      └─ HashAggregate(group by o.sku, SUM(o.qty * p.unit_price))
+         └─ HashJoin(inner, on o.sku = p.sku)
+            ├─ probe: Scan(orders AS o) reads 6 of 6 columns [id, customer_id, sku, qty, amount, order_date], 30 rows
+            └─ build: Scan(products AS p) reads 4 of 4 columns [sku, title, category, unit_price], 8 rows
+
+-- plan (optimized)
+Limit(4)
+└─ Project(o.sku, "SUM(o.qty * p.unit_price)" AS gross)
+   └─ Sort("SUM(o.qty * p.unit_price)" DESC)
+      └─ HashAggregate(group by o.sku, SUM(o.qty * p.unit_price))
+         └─ HashJoin(inner, on o.sku = p.sku)
+            ├─ probe: Scan(orders AS o) reads 2 of 6 columns [sku, qty], 30 rows
+            └─ build: Scan(products AS p) reads 2 of 4 columns [sku, unit_price], 8 rows
+
+rules applied: projection pruning
+
+-- result
+sku   | gross
+------+------
+D-700 |   512
+A-100 |   174
+A-220 |   132
+C-610 |  92.5
+(4 rows)

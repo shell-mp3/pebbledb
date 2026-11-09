@@ -1,0 +1,20 @@
+-- query
+SELECT COUNT(*) FROM orders
+
+-- plan (unoptimized)
+Project("COUNT(*)")
+└─ HashAggregate(no group by, COUNT(*))
+   └─ Scan(orders) reads 6 of 6 columns [id, customer_id, sku, qty, amount, order_date], 30 rows
+
+-- plan (optimized)
+Project("COUNT(*)")
+└─ HashAggregate(no group by, COUNT(*))
+   └─ Scan(orders) reads 0 of 6 columns [], 30 rows
+
+rules applied: projection pruning
+
+-- result
+COUNT(*)
+--------
+      30
+(1 row)

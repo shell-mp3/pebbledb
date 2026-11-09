@@ -1,0 +1,26 @@
+-- query
+SELECT c.name, o.amount FROM customers c JOIN orders o ON c.id = o.customer_id AND o.amount > 100
+ORDER BY o.amount DESC
+
+-- plan (unoptimized)
+Project(c.name, o.amount)
+└─ Sort(o.amount DESC)
+   └─ HashJoin(inner, on c.id = o.customer_id, residual o.amount > 100)
+      ├─ probe: Scan(customers AS c) reads 5 of 5 columns [id, name, country, plan, signup_date], 12 rows
+      └─ build: Scan(orders AS o) reads 6 of 6 columns [id, customer_id, sku, qty, amount, order_date], 30 rows
+
+-- plan (optimized)
+Project(c.name, o.amount)
+└─ Sort(o.amount DESC)
+   └─ HashJoin(inner, on c.id = o.customer_id, residual o.amount > 100)
+      ├─ probe: Scan(customers AS c) reads 2 of 5 columns [id, name], 12 rows
+      └─ build: Scan(orders AS o) reads 2 of 6 columns [customer_id, amount], 30 rows
+
+rules applied: projection pruning
+
+-- result
+name         | amount
+-------------+-------
+Lena Berg    |    192
+Dalia Haddad |    128
+(2 rows)

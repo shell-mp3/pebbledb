@@ -1,0 +1,22 @@
+-- query
+SELECT sku FROM products WHERE category = 'bath' OR unit_price > 60
+
+-- plan (unoptimized)
+Project(sku)
+└─ Filter(category = 'bath' OR unit_price > 60)
+   └─ Scan(products) reads 4 of 4 columns [sku, title, category, unit_price], 8 rows
+
+-- plan (optimized)
+Project(sku)
+└─ Filter(category = 'bath' OR unit_price > 60)
+   └─ Scan(products) reads 3 of 4 columns [sku, category, unit_price], 8 rows
+
+rules applied: projection pruning
+
+-- result
+sku
+-----
+C-500
+C-610
+D-700
+(3 rows)

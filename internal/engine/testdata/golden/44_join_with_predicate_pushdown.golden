@@ -1,0 +1,31 @@
+-- query
+SELECT c.name, o.amount
+FROM customers c JOIN orders o ON c.id = o.customer_id
+WHERE c.country = 'CA' AND o.amount > 50
+ORDER BY o.amount DESC
+
+-- plan (unoptimized)
+Project(c.name, o.amount)
+└─ Sort(o.amount DESC)
+   └─ Filter(c.country = 'CA' AND o.amount > 50)
+      └─ HashJoin(inner, on c.id = o.customer_id)
+         ├─ probe: Scan(customers AS c) reads 5 of 5 columns [id, name, country, plan, signup_date], 12 rows
+         └─ build: Scan(orders AS o) reads 6 of 6 columns [id, customer_id, sku, qty, amount, order_date], 30 rows
+
+-- plan (optimized)
+Project(c.name, o.amount)
+└─ Sort(o.amount DESC)
+   └─ HashJoin(inner, on c.id = o.customer_id)
+      ├─ probe: Filter(c.country = 'CA')
+      │  └─ Scan(customers AS c) reads 3 of 5 columns [id, name, country], 12 rows
+      └─ build: Filter(o.amount > 50)
+         └─ Scan(orders AS o) reads 2 of 6 columns [customer_id, amount], 30 rows
+
+rules applied: predicate pushdown, projection pruning
+
+-- result
+name       | amount
+-----------+-------
+Lena Berg  |    192
+Ada Okafor |     64
+(2 rows)

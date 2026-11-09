@@ -1,0 +1,22 @@
+-- query
+SELECT * FROM products
+
+-- plan (unoptimized)
+Project(products.sku, products.title, products.category, products.unit_price)
+└─ Scan(products) reads 4 of 4 columns [sku, title, category, unit_price], 8 rows
+
+-- plan (optimized)
+(unchanged)
+
+-- result
+sku   | title             | category   | unit_price
+------+-------------------+------------+-----------
+A-100 | Basalt Mug        | homeware   |       14.5
+A-220 | Slate Coaster Set | homeware   |         22
+B-310 | Granite Notebook  | stationery |       9.75
+B-415 | Chalk Pencil Pack | stationery |       4.25
+C-500 | Pumice Soap       | bath       |          7
+C-610 | Clay Face Mask    | bath       |       18.5
+D-700 | Quartz Desk Lamp  | lighting   |         64
+D-880 | Flint Candle      | lighting   |      11.25
+(8 rows)

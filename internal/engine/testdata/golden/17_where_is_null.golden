@@ -1,0 +1,20 @@
+-- query
+SELECT id, name FROM customers WHERE country IS NULL
+
+-- plan (unoptimized)
+Project(id, name)
+└─ Filter(country IS NULL)
+   └─ Scan(customers) reads 5 of 5 columns [id, name, country, plan, signup_date], 12 rows
+
+-- plan (optimized)
+Project(id, name)
+└─ Filter(country IS NULL)
+   └─ Scan(customers) reads 3 of 5 columns [id, name, country], 12 rows
+
+rules applied: projection pruning
+
+-- result
+id | name
+---+------------
+ 9 | Ivan Petrov
+(1 row)

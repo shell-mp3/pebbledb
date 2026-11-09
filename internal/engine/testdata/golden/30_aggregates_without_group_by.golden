@@ -1,0 +1,20 @@
+-- query
+SELECT SUM(amount) AS total, AVG(amount) AS mean, MIN(amount) AS lowest, MAX(amount) AS highest FROM orders
+
+-- plan (unoptimized)
+Project("SUM(amount)" AS total, "AVG(amount)" AS mean, "MIN(amount)" AS lowest, "MAX(amount)" AS highest)
+└─ HashAggregate(no group by, SUM(amount), AVG(amount), MIN(amount), MAX(amount))
+   └─ Scan(orders) reads 6 of 6 columns [id, customer_id, sku, qty, amount, order_date], 30 rows
+
+-- plan (optimized)
+Project("SUM(amount)" AS total, "AVG(amount)" AS mean, "MIN(amount)" AS lowest, "MAX(amount)" AS highest)
+└─ HashAggregate(no group by, SUM(amount), AVG(amount), MIN(amount), MAX(amount))
+   └─ Scan(orders) reads 1 of 6 columns [amount], 30 rows
+
+rules applied: projection pruning
+
+-- result
+total   | mean              | lowest | highest
+--------+-------------------+--------+--------
+1168.75 | 40.30172413793103 |      7 |     192
+(1 row)

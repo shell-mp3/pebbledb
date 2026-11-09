@@ -1,0 +1,5 @@
+-- query
+SELECT name, COUNT(*) FROM customers GROUP BY country
+
+-- error
+name in the select list must appear in GROUP BY or be used in an aggregate function

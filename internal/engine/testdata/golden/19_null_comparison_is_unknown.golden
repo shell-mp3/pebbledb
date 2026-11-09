@@ -1,0 +1,27 @@
+-- query
+SELECT id, country FROM customers WHERE country <> 'CA'
+
+-- plan (unoptimized)
+Project(id, country)
+└─ Filter(country <> 'CA')
+   └─ Scan(customers) reads 5 of 5 columns [id, name, country, plan, signup_date], 12 rows
+
+-- plan (optimized)
+Project(id, country)
+└─ Filter(country <> 'CA')
+   └─ Scan(customers) reads 2 of 5 columns [id, country], 12 rows
+
+rules applied: projection pruning
+
+-- result
+id | country
+---+--------
+ 2 | MX
+ 4 | JO
+ 5 | FI
+ 6 | EG
+ 7 | BR
+ 8 | JP
+10 | CZ
+11 | GH
+(8 rows)

@@ -1,0 +1,21 @@
+-- query
+SELECT sku, title FROM products WHERE title LIKE 'C%'
+
+-- plan (unoptimized)
+Project(sku, title)
+└─ Filter(title LIKE 'C%')
+   └─ Scan(products) reads 4 of 4 columns [sku, title, category, unit_price], 8 rows
+
+-- plan (optimized)
+Project(sku, title)
+└─ Filter(title LIKE 'C%')
+   └─ Scan(products) reads 2 of 4 columns [sku, title], 8 rows
+
+rules applied: projection pruning
+
+-- result
+sku   | title
+------+------------------
+B-415 | Chalk Pencil Pack
+C-610 | Clay Face Mask
+(2 rows)

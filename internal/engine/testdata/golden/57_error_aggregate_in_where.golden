@@ -1,0 +1,5 @@
+-- query
+SELECT sku FROM orders WHERE COUNT(*) > 1
+
+-- error
+line 1:42: aggregate COUNT(*) is not allowed in WHERE (use HAVING)

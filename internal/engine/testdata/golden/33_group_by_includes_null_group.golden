@@ -1,0 +1,31 @@
+-- query
+SELECT country, COUNT(*) AS n FROM customers GROUP BY country ORDER BY country
+
+-- plan (unoptimized)
+Project(customers.country, "COUNT(*)" AS n)
+└─ Sort(customers.country)
+   └─ HashAggregate(group by country, COUNT(*))
+      └─ Scan(customers) reads 5 of 5 columns [id, name, country, plan, signup_date], 12 rows
+
+-- plan (optimized)
+Project(customers.country, "COUNT(*)" AS n)
+└─ Sort(customers.country)
+   └─ HashAggregate(group by country, COUNT(*))
+      └─ Scan(customers) reads 1 of 5 columns [country], 12 rows
+
+rules applied: projection pruning
+
+-- result
+country | n
+--------+--
+NULL    | 1
+BR      | 1
+CA      | 3
+CZ      | 1
+EG      | 1
+FI      | 1
+GH      | 1
+JO      | 1
+JP      | 1
+MX      | 1
+(10 rows)

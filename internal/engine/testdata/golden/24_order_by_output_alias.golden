@@ -1,0 +1,24 @@
+-- query
+SELECT sku, unit_price * 2 AS pair_price FROM products ORDER BY pair_price DESC LIMIT 3
+
+-- plan (unoptimized)
+Limit(3)
+└─ Project(sku, unit_price * 2 AS pair_price)
+   └─ Sort(unit_price * 2 DESC)
+      └─ Scan(products) reads 4 of 4 columns [sku, title, category, unit_price], 8 rows
+
+-- plan (optimized)
+Limit(3)
+└─ Project(sku, unit_price * 2 AS pair_price)
+   └─ Sort(unit_price * 2 DESC)
+      └─ Scan(products) reads 2 of 4 columns [sku, unit_price], 8 rows
+
+rules applied: projection pruning
+
+-- result
+sku   | pair_price
+------+-----------
+D-700 |        128
+A-220 |         44
+C-610 |         37
+(3 rows)

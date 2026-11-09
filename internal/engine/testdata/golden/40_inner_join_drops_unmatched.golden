@@ -1,0 +1,24 @@
+-- query
+SELECT COUNT(*) AS matched FROM orders o JOIN customers c ON o.customer_id = c.id
+
+-- plan (unoptimized)
+Project("COUNT(*)" AS matched)
+└─ HashAggregate(no group by, COUNT(*))
+   └─ HashJoin(inner, on o.customer_id = c.id)
+      ├─ probe: Scan(orders AS o) reads 6 of 6 columns [id, customer_id, sku, qty, amount, order_date], 30 rows
+      └─ build: Scan(customers AS c) reads 5 of 5 columns [id, name, country, plan, signup_date], 12 rows
+
+-- plan (optimized)
+Project("COUNT(*)" AS matched)
+└─ HashAggregate(no group by, COUNT(*))
+   └─ HashJoin(inner, on o.customer_id = c.id)
+      ├─ probe: Scan(orders AS o) reads 1 of 6 columns [customer_id], 30 rows
+      └─ build: Scan(customers AS c) reads 1 of 5 columns [id], 12 rows
+
+rules applied: projection pruning
+
+-- result
+matched
+-------
+     29
+(1 row)

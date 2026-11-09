@@ -1,0 +1,23 @@
+-- query
+SELECT sku, category FROM products WHERE category IN ('bath', 'lighting')
+
+-- plan (unoptimized)
+Project(sku, category)
+└─ Filter(category IN ('bath', 'lighting'))
+   └─ Scan(products) reads 4 of 4 columns [sku, title, category, unit_price], 8 rows
+
+-- plan (optimized)
+Project(sku, category)
+└─ Filter(category IN ('bath', 'lighting'))
+   └─ Scan(products) reads 2 of 4 columns [sku, category], 8 rows
+
+rules applied: projection pruning
+
+-- result
+sku   | category
+------+---------
+C-500 | bath
+C-610 | bath
+D-700 | lighting
+D-880 | lighting
+(4 rows)

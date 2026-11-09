@@ -1,0 +1,9 @@
+-- query
+EXPLAIN SELECT COUNT(*) FROM orders
+
+-- result
+Project("COUNT(*)")
+└─ HashAggregate(no group by, COUNT(*))
+   └─ Scan(orders) reads 0 of 6 columns [], 30 rows
+
+rules applied: projection pruning

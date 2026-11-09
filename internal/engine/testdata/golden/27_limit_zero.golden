@@ -1,0 +1,19 @@
+-- query
+SELECT id FROM orders LIMIT 0
+
+-- plan (unoptimized)
+Limit(0)
+└─ Project(id)
+   └─ Scan(orders) reads 6 of 6 columns [id, customer_id, sku, qty, amount, order_date], 30 rows
+
+-- plan (optimized)
+Limit(0)
+└─ Project(id)
+   └─ Scan(orders) reads 1 of 6 columns [id], 30 rows
+
+rules applied: projection pruning
+
+-- result
+id
+--
+(0 rows)

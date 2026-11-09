@@ -1,0 +1,25 @@
+-- query
+SELECT p.sku, p.category FROM products AS p
+
+-- plan (unoptimized)
+Project(p.sku, p.category)
+└─ Scan(products AS p) reads 4 of 4 columns [sku, title, category, unit_price], 8 rows
+
+-- plan (optimized)
+Project(p.sku, p.category)
+└─ Scan(products AS p) reads 2 of 4 columns [sku, category], 8 rows
+
+rules applied: projection pruning
+
+-- result
+sku   | category
+------+-----------
+A-100 | homeware
+A-220 | homeware
+B-310 | stationery
+B-415 | stationery
+C-500 | bath
+C-610 | bath
+D-700 | lighting
+D-880 | lighting
+(8 rows)

@@ -1,0 +1,5 @@
+-- query
+SELECT * FROM orders JOIN orders ON orders.id = orders.id
+
+-- error
+table name "orders" is used twice; give one of them an alias

@@ -43,33 +43,42 @@ func FormatResult(r *Result) string {
 		}
 	}
 
-	var sb strings.Builder
+	// Lines are assembled and then right-trimmed, so padding the last column
+	// never leaves trailing whitespace in a golden file.
+	var lines []string
+	var line strings.Builder
 	for i, name := range r.Columns {
 		if i > 0 {
-			sb.WriteString(" | ")
+			line.WriteString(" | ")
 		}
-		sb.WriteString(pad(name, widths[i], false))
+		line.WriteString(pad(name, widths[i], false))
 	}
-	sb.WriteString("\n")
+	lines = append(lines, line.String())
+
+	line.Reset()
 	for i := range r.Columns {
 		if i > 0 {
-			sb.WriteString("-+-")
+			line.WriteString("-+-")
 		}
-		sb.WriteString(strings.Repeat("-", widths[i]))
+		line.WriteString(strings.Repeat("-", widths[i]))
 	}
-	sb.WriteString("\n")
+	lines = append(lines, line.String())
 
 	for _, row := range cells {
+		line.Reset()
 		for j, cell := range row {
 			if j > 0 {
-				sb.WriteString(" | ")
+				line.WriteString(" | ")
 			}
-			sb.WriteString(pad(cell, widths[j], r.Kinds[j].IsNumeric()))
+			line.WriteString(pad(cell, widths[j], r.Kinds[j].IsNumeric()))
 		}
-		sb.WriteString("\n")
+		lines = append(lines, line.String())
 	}
-	fmt.Fprintf(&sb, "(%s)", plural(len(r.Rows), "row"))
-	return sb.String()
+	for i, l := range lines {
+		lines[i] = strings.TrimRight(l, " ")
+	}
+	lines = append(lines, fmt.Sprintf("(%s)", plural(len(r.Rows), "row")))
+	return strings.Join(lines, "\n")
 }
 
 // pad fits s to width, on the right for numbers and on the left otherwise.

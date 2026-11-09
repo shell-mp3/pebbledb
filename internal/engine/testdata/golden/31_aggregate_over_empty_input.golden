@@ -1,0 +1,22 @@
+-- query
+SELECT COUNT(*) AS n, SUM(amount) AS total FROM orders WHERE amount > 1000
+
+-- plan (unoptimized)
+Project("COUNT(*)" AS n, "SUM(amount)" AS total)
+└─ HashAggregate(no group by, COUNT(*), SUM(amount))
+   └─ Filter(amount > 1000)
+      └─ Scan(orders) reads 6 of 6 columns [id, customer_id, sku, qty, amount, order_date], 30 rows
+
+-- plan (optimized)
+Project("COUNT(*)" AS n, "SUM(amount)" AS total)
+└─ HashAggregate(no group by, COUNT(*), SUM(amount))
+   └─ Filter(amount > 1000)
+      └─ Scan(orders) reads 1 of 6 columns [amount], 30 rows
+
+rules applied: projection pruning
+
+-- result
+n | total
+--+------
+0 |  NULL
+(1 row)

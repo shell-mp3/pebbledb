@@ -1,0 +1,23 @@
+-- query
+SELECT category, COUNT(*) AS n FROM products GROUP BY category
+
+-- plan (unoptimized)
+Project(products.category, "COUNT(*)" AS n)
+└─ HashAggregate(group by category, COUNT(*))
+   └─ Scan(products) reads 4 of 4 columns [sku, title, category, unit_price], 8 rows
+
+-- plan (optimized)
+Project(products.category, "COUNT(*)" AS n)
+└─ HashAggregate(group by category, COUNT(*))
+   └─ Scan(products) reads 1 of 4 columns [category], 8 rows
+
+rules applied: projection pruning
+
+-- result
+category   | n
+-----------+--
+homeware   | 2
+stationery | 2
+bath       | 2
+lighting   | 2
+(4 rows)

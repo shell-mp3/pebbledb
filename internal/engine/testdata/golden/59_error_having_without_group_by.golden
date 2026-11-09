@@ -1,0 +1,5 @@
+-- query
+SELECT sku FROM orders HAVING sku = 'A-100'
+
+-- error
+HAVING requires GROUP BY or an aggregate in the select list

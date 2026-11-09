@@ -1,0 +1,25 @@
+-- query
+SELECT sku, unit_price * 2 AS pair_price FROM products
+
+-- plan (unoptimized)
+Project(sku, unit_price * 2 AS pair_price)
+└─ Scan(products) reads 4 of 4 columns [sku, title, category, unit_price], 8 rows
+
+-- plan (optimized)
+Project(sku, unit_price * 2 AS pair_price)
+└─ Scan(products) reads 2 of 4 columns [sku, unit_price], 8 rows
+
+rules applied: projection pruning
+
+-- result
+sku   | pair_price
+------+-----------
+A-100 |         29
+A-220 |         44
+B-310 |       19.5
+B-415 |        8.5
+C-500 |         14
+C-610 |         37
+D-700 |        128
+D-880 |       22.5
+(8 rows)

@@ -1,0 +1,36 @@
+-- query
+SELECT c.name, p.title, o.amount
+FROM orders o JOIN customers c ON o.customer_id = c.id JOIN products p ON o.sku = p.sku
+ORDER BY o.amount DESC LIMIT 5
+
+-- plan (unoptimized)
+Limit(5)
+└─ Project(c.name, p.title, o.amount)
+   └─ Sort(o.amount DESC)
+      └─ HashJoin(inner, on o.sku = p.sku)
+         ├─ probe: HashJoin(inner, on o.customer_id = c.id)
+         │  ├─ probe: Scan(orders AS o) reads 6 of 6 columns [id, customer_id, sku, qty, amount, order_date], 30 rows
+         │  └─ build: Scan(customers AS c) reads 5 of 5 columns [id, name, country, plan, signup_date], 12 rows
+         └─ build: Scan(products AS p) reads 4 of 4 columns [sku, title, category, unit_price], 8 rows
+
+-- plan (optimized)
+Limit(5)
+└─ Project(c.name, p.title, o.amount)
+   └─ Sort(o.amount DESC)
+      └─ HashJoin(inner, on o.sku = p.sku)
+         ├─ probe: HashJoin(inner, on o.customer_id = c.id)
+         │  ├─ probe: Scan(orders AS o) reads 3 of 6 columns [customer_id, sku, amount], 30 rows
+         │  └─ build: Scan(customers AS c) reads 2 of 5 columns [id, name], 12 rows
+         └─ build: Scan(products AS p) reads 2 of 4 columns [sku, title], 8 rows
+
+rules applied: projection pruning
+
+-- result
+name          | title             | amount
+--------------+-------------------+-------
+Lena Berg     | Quartz Desk Lamp  |    192
+Dalia Haddad  | Quartz Desk Lamp  |    128
+Bruno Salas   | Basalt Mug        |   72.5
+Farida Nasser | Slate Coaster Set |     66
+Ada Okafor    | Quartz Desk Lamp  |     64
+(5 rows)
