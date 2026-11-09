@@ -56,17 +56,17 @@ func TestParse(t *testing.T) {
 		{
 			name: "AND binds tighter than OR",
 			src:  "select * from t where a or b and c",
-			want: "SELECT * FROM t WHERE a OR (b AND c)",
+			want: "SELECT * FROM t WHERE a OR b AND c",
 		},
 		{
 			name: "NOT binds looser than comparison",
 			src:  "select * from t where not a = 1",
-			want: "SELECT * FROM t WHERE NOT (a = 1)",
+			want: "SELECT * FROM t WHERE NOT a = 1",
 		},
 		{
 			name: "arithmetic precedence",
 			src:  "select 1 + 2 * 3 from t",
-			want: "SELECT 1 + (2 * 3) FROM t",
+			want: "SELECT 1 + 2 * 3 FROM t",
 		},
 		{
 			name: "parentheses override precedence",
@@ -76,7 +76,7 @@ func TestParse(t *testing.T) {
 		{
 			name: "comparison is left associative",
 			src:  "select * from t where a - b - c > 0",
-			want: "SELECT * FROM t WHERE ((a - b) - c) > 0",
+			want: "SELECT * FROM t WHERE a - b - c > 0",
 		},
 		{
 			name: "unary minus folds into a literal",
@@ -96,12 +96,12 @@ func TestParse(t *testing.T) {
 		{
 			name: "is null",
 			src:  "select * from t where a is null and b is not null",
-			want: "SELECT * FROM t WHERE (a IS NULL) AND (b IS NOT NULL)",
+			want: "SELECT * FROM t WHERE a IS NULL AND b IS NOT NULL",
 		},
 		{
 			name: "like and not like",
 			src:  "select * from t where a like 'x%' or b not like '_y'",
-			want: "SELECT * FROM t WHERE (a LIKE 'x%') OR (NOT (b LIKE '_y'))",
+			want: "SELECT * FROM t WHERE a LIKE 'x%' OR NOT b LIKE '_y'",
 		},
 		{
 			name: "in list",
@@ -284,7 +284,7 @@ func TestRewritePreservesOriginal(t *testing.T) {
 	if got := sel.Where.String(); got != before {
 		t.Errorf("Rewrite mutated the original: %s", got)
 	}
-	if want := "((z = 1) AND (b = 2))"; rewritten.String() != want {
+	if want := "z = 1 AND b = 2"; rewritten.String() != want {
 		t.Errorf("rewritten = %s, want %s", rewritten.String(), want)
 	}
 }
@@ -304,7 +304,7 @@ func TestSplitAndJoinConjuncts(t *testing.T) {
 	if got := ast.JoinConjuncts(nil); got != nil {
 		t.Errorf("JoinConjuncts(nil) = %v, want nil so the Filter node can be dropped", got)
 	}
-	if got := ast.Unparenthesize(ast.JoinConjuncts(parts).String()); got != "((a = 1) AND (b = 2)) AND ((c = 3) OR (d = 4))" {
+	if got := ast.JoinConjuncts(parts).String(); got != "a = 1 AND b = 2 AND (c = 3 OR d = 4)" {
 		t.Errorf("round trip = %s", got)
 	}
 }
@@ -322,5 +322,77 @@ func TestKeyIsCaseInsensitive(t *testing.T) {
 	kb := ast.Key(b.(*ast.Select).Items[0].Expr)
 	if ka != kb {
 		t.Errorf("Key is case sensitive: %q vs %q", ka, kb)
+	}
+}
+
+// TestExpressionPrecedence asserts the shape of the tree rather than the
+// canonical SQL, because String deliberately omits parentheses that do not
+// change meaning. ast.Parens makes the grouping visible.
+func TestExpressionPrecedence(t *testing.T) {
+	tests := []struct {
+		src  string
+		want string
+	}{
+		{"a or b and c", "(a OR (b AND c))"},
+		{"a and b or c", "((a AND b) OR c)"},
+		{"not a and b", "((NOT a) AND b)"},
+		{"not a = 1", "(NOT (a = 1))"},
+		{"1 + 2 * 3", "(1 + (2 * 3))"},
+		{"1 * 2 + 3", "((1 * 2) + 3)"},
+		{"a - b - c", "((a - b) - c)"},
+		{"a / b * c", "((a / b) * c)"},
+		{"-a * b", "((-a) * b)"},
+		{"a + b > c + d", "((a + b) > (c + d))"},
+		{"a = b and c = d", "((a = b) AND (c = d))"},
+		{"a + 1 is null", "((a + 1) IS NULL)"},
+		{"a + 1 in (2)", "((a + 1) IN (2))"},
+		{"a like 'x' and b", "((a LIKE 'x') AND b)"},
+		{"sum(a + b) > 1", "(SUM((a + b)) > 1)"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.src, func(t *testing.T) {
+			stmt, err := Parse("SELECT " + tc.src + " FROM t")
+			if err != nil {
+				t.Fatalf("Parse: %v", err)
+			}
+			if got := ast.Parens(stmt.(*ast.Select).Items[0].Expr); got != tc.want {
+				t.Errorf("Parens(%q) = %s, want %s", tc.src, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestPrintedFormReparsesToTheSameTree is the property FuzzParse checks at
+// scale, pinned here for the cases where precedence-aware printing could drop
+// a parenthesis that actually mattered.
+func TestPrintedFormReparsesToTheSameTree(t *testing.T) {
+	for _, src := range []string{
+		"select a - (b - c) from t",
+		"select (a + b) * c from t",
+		"select a or (b and c) from t",
+		"select (a or b) and c from t",
+		"select not (a and b) from t",
+		"select -(-a) from t",
+		"select -(a + b) from t",
+		"select (a = b) = c from t",
+		"select (a is null) is null from t",
+		"select a from t where not (a like 'x')",
+	} {
+		t.Run(src, func(t *testing.T) {
+			first, err := Parse(src)
+			if err != nil {
+				t.Fatalf("Parse: %v", err)
+			}
+			printed := stmtString(first)
+			second, err := Parse(printed)
+			if err != nil {
+				t.Fatalf("Parse(%q): %v", printed, err)
+			}
+			wantTree := ast.Parens(first.(*ast.Select).Items[0].Expr)
+			gotTree := ast.Parens(second.(*ast.Select).Items[0].Expr)
+			if gotTree != wantTree {
+				t.Errorf("%q printed as %q, which parses to a different tree\n got: %s\nwant: %s", src, printed, gotTree, wantTree)
+			}
+		})
 	}
 }

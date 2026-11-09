@@ -24,18 +24,18 @@ func (s *Select) String() string {
 		sb.WriteString(j.String())
 	}
 	if s.Where != nil {
-		sb.WriteString(" WHERE " + Unparenthesize(s.Where.String()))
+		sb.WriteString(" WHERE " + s.Where.String())
 	}
 	if len(s.GroupBy) > 0 {
 		sb.WriteString(" GROUP BY " + exprList(s.GroupBy))
 	}
 	if s.Having != nil {
-		sb.WriteString(" HAVING " + Unparenthesize(s.Having.String()))
+		sb.WriteString(" HAVING " + s.Having.String())
 	}
 	if len(s.OrderBy) > 0 {
 		parts := make([]string, len(s.OrderBy))
 		for i, k := range s.OrderBy {
-			parts[i] = Unparenthesize(k.Expr.String())
+			parts[i] = k.Expr.String()
 			if k.Desc {
 				parts[i] += " DESC"
 			}
@@ -64,7 +64,7 @@ func (i SelectItem) String() string {
 		}
 		return "*"
 	}
-	out := Unparenthesize(i.Expr.String())
+	out := i.Expr.String()
 	if i.Alias != "" {
 		out += " AS " + QuoteIdent(i.Alias)
 	}
@@ -85,13 +85,13 @@ func (j Join) String() string {
 	if j.Type == LeftJoin {
 		kind = "LEFT JOIN"
 	}
-	return kind + " " + j.Table.String() + " ON " + Unparenthesize(j.On.String())
+	return kind + " " + j.Table.String() + " ON " + j.On.String()
 }
 
 func exprList(exprs []Expr) string {
 	parts := make([]string, len(exprs))
 	for i, e := range exprs {
-		parts[i] = Unparenthesize(e.String())
+		parts[i] = e.String()
 	}
 	return strings.Join(parts, ", ")
 }

@@ -166,7 +166,11 @@ type Binary struct {
 func (*Binary) expr() {}
 
 func (b *Binary) String() string {
-	return "(" + b.Left.String() + " " + b.Op + " " + b.Right.String() + ")"
+	p := precOf(b)
+	// Left-associative: an operand of equal precedence needs parentheses only
+	// on the right, which is also what keeps a - (b - c) from printing as
+	// a - b - c.
+	return sub(b.Left, p) + " " + b.Op + " " + sub(b.Right, p+1)
 }
 
 // Unary is a prefix operator: NOT or unary minus.
@@ -179,9 +183,15 @@ func (*Unary) expr() {}
 
 func (u *Unary) String() string {
 	if u.Op == "NOT" {
-		return "(NOT " + u.Expr.String() + ")"
+		return "NOT " + sub(u.Expr, precNot)
 	}
-	return "(" + u.Op + u.Expr.String() + ")"
+	operand := sub(u.Expr, precNeg)
+	// "--" starts a line comment, so a negated negative needs parentheses
+	// even though precedence does not call for them.
+	if strings.HasPrefix(operand, "-") {
+		operand = "(" + operand + ")"
+	}
+	return "-" + operand
 }
 
 // IsNull is "x IS NULL" or, with Negate, "x IS NOT NULL".
@@ -194,9 +204,9 @@ func (*IsNull) expr() {}
 
 func (i *IsNull) String() string {
 	if i.Negate {
-		return "(" + i.Expr.String() + " IS NOT NULL)"
+		return sub(i.Expr, precAdd) + " IS NOT NULL"
 	}
-	return "(" + i.Expr.String() + " IS NULL)"
+	return sub(i.Expr, precAdd) + " IS NULL"
 }
 
 // In is "x IN (a, b, c)" or, with Negate, "x NOT IN (...)". Only explicit
@@ -218,7 +228,7 @@ func (i *In) String() string {
 	if i.Negate {
 		op = " NOT IN ("
 	}
-	return "(" + i.Expr.String() + op + strings.Join(parts, ", ") + "))"
+	return sub(i.Expr, precAdd) + op + strings.Join(parts, ", ") + ")"
 }
 
 // AggFunc identifies an aggregate function.
@@ -285,9 +295,7 @@ func (a *Aggregate) String() string {
 	if a.Star {
 		return a.Func.String() + "(*)"
 	}
-	// The argument already carries its own parentheses, so strip one layer to
-	// keep SUM(qty * price) from printing as SUM((qty * price)).
-	return a.Func.String() + "(" + Unparenthesize(a.Arg.String()) + ")"
+	return a.Func.String() + "(" + a.Arg.String() + ")"
 }
 
 // Key returns a canonical, case-insensitive form of e, used to decide whether
@@ -303,37 +311,100 @@ func DisplayName(e Expr) string {
 	if c, ok := e.(*ColumnRef); ok {
 		return c.Name
 	}
-	return Unparenthesize(e.String())
+	return e.String()
 }
 
-// Unparenthesize strips one layer of redundant outer parentheses, which the
-// String methods add unconditionally to keep precedence unambiguous.
-func Unparenthesize(s string) string {
-	if len(s) < 2 || s[0] != '(' || s[len(s)-1] != ')' {
-		return s
-	}
-	depth := 0
-	for i := 0; i < len(s); i++ {
-		switch s[i] {
-		case '(':
-			depth++
-		case ')':
-			depth--
-			if depth == 0 && i != len(s)-1 {
-				// The opening paren closes before the end, so the outer
-				// parens are not a matched pair around the whole string.
-				return s
-			}
-		case '\'':
-			// Skip string literals so quoted parens are not counted.
-			for i++; i < len(s); i++ {
-				if s[i] == '\'' {
-					break
-				}
-			}
+// Precedence levels, one per level of the parser's method chain. String uses
+// them to add parentheses only where they change meaning, which is the
+// difference between EXPLAIN printing
+//
+//	Filter(o.amount > 500 AND c.country = 'CA')
+//
+// and the unreadable
+//
+//	Filter(((o.amount > 500) AND (c.country = 'CA')))
+const (
+	precOr      = 1
+	precAnd     = 2
+	precNot     = 3
+	precCompare = 4
+	precAdd     = 5
+	precMul     = 6
+	precNeg     = 7
+	precAtom    = 8
+)
+
+// precOf reports how tightly e binds.
+func precOf(e Expr) int {
+	switch n := e.(type) {
+	case *Binary:
+		switch n.Op {
+		case "OR":
+			return precOr
+		case "AND":
+			return precAnd
+		case "+", "-":
+			return precAdd
+		case "*", "/", "%":
+			return precMul
 		}
+		// Comparisons and LIKE.
+		return precCompare
+	case *Unary:
+		if n.Op == "NOT" {
+			return precNot
+		}
+		return precNeg
+	case *IsNull, *In:
+		return precCompare
 	}
-	return s[1 : len(s)-1]
+	return precAtom
+}
+
+// sub renders a subexpression, parenthesising it when it binds more loosely
+// than its position allows.
+func sub(e Expr, minPrec int) string {
+	s := e.String()
+	if precOf(e) < minPrec {
+		return "(" + s + ")"
+	}
+	return s
+}
+
+// Parens renders e fully parenthesized. Nothing in the engine uses it: it
+// exists so the parser tests can assert on tree shape, which String
+// deliberately hides.
+func Parens(e Expr) string {
+	switch n := e.(type) {
+	case *Binary:
+		return "(" + Parens(n.Left) + " " + n.Op + " " + Parens(n.Right) + ")"
+	case *Unary:
+		if n.Op == "NOT" {
+			return "(NOT " + Parens(n.Expr) + ")"
+		}
+		return "(" + n.Op + Parens(n.Expr) + ")"
+	case *IsNull:
+		if n.Negate {
+			return "(" + Parens(n.Expr) + " IS NOT NULL)"
+		}
+		return "(" + Parens(n.Expr) + " IS NULL)"
+	case *In:
+		parts := make([]string, len(n.List))
+		for i, item := range n.List {
+			parts[i] = Parens(item)
+		}
+		op := " IN ("
+		if n.Negate {
+			op = " NOT IN ("
+		}
+		return "(" + Parens(n.Expr) + op + strings.Join(parts, ", ") + "))"
+	case *Aggregate:
+		if n.Star {
+			return n.Func.String() + "(*)"
+		}
+		return n.Func.String() + "(" + Parens(n.Arg) + ")"
+	}
+	return e.String()
 }
 
 // Walk calls fn for e and every subexpression, depth first. If fn returns
