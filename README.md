@@ -50,7 +50,8 @@ Chen Wei   |  94.5
 (3 rows)
 ```
 
-Needs Go 1.24 or newer. One statement at a time without the REPL:
+Needs Go 1.24 or newer, and `go build -o pebbledb ./cmd/pebbledb` gives you the binary the
+examples here call `pebbledb`. One statement at a time without the REPL:
 
 ```bash
 go run ./cmd/pebbledb -c "SELECT COUNT(*) FROM orders" data/
@@ -64,8 +65,8 @@ which is how you get the before and after plans below.
 
 I wanted to know what actually happens between typing a query and getting rows back, and the only
 way I know to find that out is to write it. Reading about predicate pushdown is not the same as
-discovering that the rule is unsafe on the inner side of a left join, and finding out the hard way
-why.
+discovering, from a query that returned the wrong rows, that the rule is unsafe on the inner side
+of a left join, and then working out why.
 
 CSV is the input because it strips away everything that is not the query engine. There are no
 pages, no B-trees and no buffer pool, so what is left is parsing, planning and iteration, which is
