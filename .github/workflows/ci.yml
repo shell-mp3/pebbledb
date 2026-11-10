@@ -18,9 +18,9 @@ jobs:
         # The oldest version go.mod claims to support, plus the two current ones.
         go: ['1.24.x', '1.26.x', '1.27.x']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go }}
           check-latest: true
@@ -55,9 +55,9 @@ jobs:
     name: fuzz
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.27.x'
           check-latest: true
