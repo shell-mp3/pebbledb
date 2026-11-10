@@ -10,6 +10,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -79,7 +80,7 @@ func run() error {
 }
 
 // runOnce executes a single statement, for -c and for piped input.
-func runOnce(eng *engine.Engine, sql string, out *os.File) error {
+func runOnce(eng *engine.Engine, sql string, out io.Writer) error {
 	res, err := eng.Query(sql)
 	if err != nil {
 		return err

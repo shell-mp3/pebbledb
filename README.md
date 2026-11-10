@@ -61,6 +61,10 @@ Each CSV file becomes a table named after it, so `data/orders.csv` is the table 
 the REPL, `.help` lists the meta-commands: `.tables`, `.schema`, `.timer on`, and `.optimize off`,
 which is how you get the before and after plans below.
 
+Statements end with `;`, the way they do in `psql` and `sqlite3`, and until then the prompt stays
+`...>`. An empty line throws an unfinished statement away. Pasting a block works, including one
+copied back out of a terminal with its `pebbledb>` prompts still attached.
+
 ## Why I built this
 
 I wanted to know what actually happens between typing a query and getting rows back, and the only
@@ -291,9 +295,7 @@ everywhere; the timings need a workload bigger than the clock's resolution to me
 go test ./...
 ```
 
-501 test cases. Statement coverage is 75.7% across the engine packages and 71.3% including the
-REPL, which has no tests of its own beyond being driven by hand. The parts that carry the most
-weight:
+525 test cases, 74.8% statement coverage. The parts that carry the most weight:
 
 **A golden-file suite of 60 queries** in [internal/engine/testdata/golden](internal/engine/testdata/golden).
 Each file holds one query, the plan before optimization, the plan after, which rules fired, and
