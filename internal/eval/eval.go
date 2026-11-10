@@ -269,8 +269,12 @@ func arithKind(op string, a, b types.Kind) types.Kind {
 }
 
 // InferKind reports the result type of e without compiling it, which is what
-// the logical planner uses to label a projection's output columns. It mirrors
-// Compile's kind rules; a name that does not resolve is an error here too.
+// the logical planner uses to label a projection's output columns.
+//
+// It also serves as the planner's validation pass: it visits every
+// subexpression, so an unknown or ambiguous column is reported while the plan
+// is still being built, against the schema the user wrote the query against,
+// rather than later against a pruned one.
 func InferKind(e ast.Expr, s *types.Schema) (types.Kind, error) {
 	switch n := e.(type) {
 	case *ast.Literal:
@@ -281,18 +285,34 @@ func InferKind(e ast.Expr, s *types.Schema) (types.Kind, error) {
 			return types.KindNull, err
 		}
 		return s.Columns[idx].Kind, nil
-	case *ast.IsNull, *ast.In:
+	case *ast.IsNull:
+		if _, err := InferKind(n.Expr, s); err != nil {
+			return types.KindNull, err
+		}
+		return types.KindBool, nil
+	case *ast.In:
+		if _, err := InferKind(n.Expr, s); err != nil {
+			return types.KindNull, err
+		}
+		for _, item := range n.List {
+			if _, err := InferKind(item, s); err != nil {
+				return types.KindNull, err
+			}
+		}
 		return types.KindBool, nil
 	case *ast.Unary:
+		inner, err := InferKind(n.Expr, s)
+		if err != nil {
+			return types.KindNull, err
+		}
 		if n.Op == "NOT" {
 			return types.KindBool, nil
 		}
-		return InferKind(n.Expr, s)
+		return inner, nil
 	case *ast.Binary:
-		switch n.Op {
-		case "AND", "OR", "LIKE", "=", "<>", "<", "<=", ">", ">=":
-			return types.KindBool, nil
-		}
+		// Both sides are inferred even when the result type is already known,
+		// because InferKind doubles as the name-resolution check the planner
+		// runs before anything is compiled.
 		a, err := InferKind(n.Left, s)
 		if err != nil {
 			return types.KindNull, err
@@ -300,6 +320,10 @@ func InferKind(e ast.Expr, s *types.Schema) (types.Kind, error) {
 		b, err := InferKind(n.Right, s)
 		if err != nil {
 			return types.KindNull, err
+		}
+		switch n.Op {
+		case "AND", "OR", "LIKE", "=", "<>", "<", "<=", ">", ">=":
+			return types.KindBool, nil
 		}
 		return arithKind(n.Op, a, b), nil
 	case *ast.Aggregate:

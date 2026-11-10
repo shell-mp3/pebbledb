@@ -16,7 +16,7 @@ import (
 
 const (
 	promptNew  = "pebbledb> "
-	promptCont = "      ...> "
+	promptCont = "     ...> "
 )
 
 const replHelp = `.help              show this message
@@ -26,8 +26,9 @@ const replHelp = `.help              show this message
 .timer on|off      report how long each query took
 .quit              leave (Ctrl-D also works)
 
-Statements run when a line ends with ";", or as soon as the buffer parses on
-its own. An empty line discards a partial statement.
+A statement runs when a line ends with ";". A single line that already parses
+runs without one, so short queries need no semicolon. An empty line discards a
+partial statement.
 
 Try:
   EXPLAIN SELECT c.name, o.amount FROM customers c
