@@ -1,0 +1,78 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: go ${{ matrix.go }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The oldest version go.mod claims to support, plus the two current ones.
+        go: ['1.24.x', '1.26.x', '1.27.x']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+          check-latest: true
+
+      - name: gofmt
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "these files are not gofmt'd:"
+            echo "$unformatted"
+            gofmt -d .
+            exit 1
+          fi
+
+      - name: build
+        run: go build ./...
+
+      - name: vet
+        run: go vet ./...
+
+      - name: test
+        run: go test -race -count=1 ./...
+
+      - name: golden files are reproducible
+        # Regenerating must be a no-op. This is what stops a golden file from
+        # drifting away from what the engine actually produces.
+        run: |
+          go test ./internal/engine -run TestGolden -update
+          git diff --exit-code -- internal/engine/testdata/golden
+
+  fuzz:
+    name: fuzz
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.x'
+          check-latest: true
+
+      # A short run on every push, which is enough to catch a regression that
+      # makes malformed input panic. Finding anything new takes minutes, not
+      # seconds, so that is left to running it by hand.
+      - name: fuzz the parser
+        run: go test ./internal/parser -run=XXX -fuzz=FuzzParse -fuzztime=45s
+
+      - name: fuzz the whole pipeline
+        run: go test ./internal/engine -run=XXX -fuzz=FuzzQuery -fuzztime=45s
+
+      - name: report any crashers
+        if: failure()
+        run: |
+          echo "inputs the fuzzer saved:"
+          find . -path '*/testdata/fuzz/*' -newer go.mod -type f -print -exec cat {} \;
